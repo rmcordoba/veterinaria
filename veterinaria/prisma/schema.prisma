@@ -1,0 +1,144 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id    String     @id @default(cuid())
+  email String     @unique
+  passwordHash String
+  nombre String
+  telefono String?
+  rol   UserRole
+  activo Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mascotas Mascota[]
+  turnos Turno[]
+  veterinarioTurnos Turno[] @relation("veterinario")
+  fichasClinicas FichaClinica[] @relation("veterinario")
+  consultas Consulta[]
+  veterinarioVacunas Vacuna[] @relation("veterinario")
+  recordatorios Recordatorio[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  dueno
+  veterinario
+  recepcion
+}
+
+model Mascota {
+  id    String     @id @default(cuid())
+  ownerId String
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  nombre String
+  raza String
+  edadYears Int
+  sexo String // macho | hembra
+  microchip String? @unique
+  notas String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  turnos Turno[]
+  fichasClinicas FichaClinica[]
+  vacunas Vacuna[]
+  recordatorios Recordatorio[]
+
+  @@map("mascotas")
+}
+
+model FichaClinica {
+  id    String     @id @default(cuid())
+  mascotaId String
+  mascota Mascota @relation(fields: [mascotaId], references: [id], onDelete: Cascade)
+  veterinarioId String
+  veterinario User @relation("veterinario", fields: [veterinarioId], references: [id])
+  pesKg Float?
+  alturaCm Int?
+  observaciones String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  consultas Consulta[]
+
+  @@map("fichas_clinicas")
+}
+
+model Consulta {
+  id    String     @id @default(cuid())
+  fichaId String
+  ficha FichaClinica @relation(fields: [fichaId], references: [id], onDelete: Cascade)
+  veterinarioId String
+  veterinario User @relation(fields: [veterinarioId], references: [id])
+  turnoId String?
+  turno Turno? @relation(fields: [turnoId], references: [id], onDelete: SetNull)
+  fecha DateTime
+  diagnostico String?
+  tratamiento String?
+  notas String?
+  createdAt DateTime @default(now())
+
+  @@map("consultas")
+}
+
+model Turno {
+  id    String     @id @default(cuid())
+  mascotaId String
+  mascota Mascota @relation(fields: [mascotaId], references: [id], onDelete: Cascade)
+  veterinarioId String
+  veterinario User @relation("veterinario", fields: [veterinarioId], references: [id])
+  ownerId String
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  fechaHora DateTime
+  estado String // pendiente | confirmado | completado | cancelado
+  razonRechazo String?
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  consultas Consulta[]
+
+  @@map("turnos")
+}
+
+model Vacuna {
+  id    String     @id @default(cuid())
+  mascotaId String
+  mascota Mascota @relation(fields: [mascotaId], references: [id], onDelete: Cascade)
+  veterinarioId String
+  veterinario User @relation("veterinario", fields: [veterinarioId], references: [id])
+  tipo String // ej: Séxtuple, Rabia
+  fechaAplicacion DateTime
+  proximaDosissugerida DateTime?
+  createdAt DateTime @default(now())
+
+  @@map("vacunas")
+}
+
+model Recordatorio {
+  id    String     @id @default(cuid())
+  mascotaId String
+  mascota Mascota @relation(fields: [mascotaId], references: [id], onDelete: Cascade)
+  ownerId String
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  tipo String // vacuna | consulta
+  referenciaId String // vacuna_id o turno_id
+  fechaProgramada DateTime
+  enviado Boolean @default(false)
+  fechaEnvio DateTime?
+  createdAt DateTime @default(now())
+
+  @@map("recordatorios")
+}
